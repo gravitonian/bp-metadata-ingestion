@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!--
+	Licensed to the Apache Software Foundation (ASF) under one or more
+	contributor license agreements.  See the NOTICE file distributed with
+	this work for additional information regarding copyright ownership.
+	The ASF licenses this file to You under the Apache License, Version 2.0
+	(the "License"); you may not use this file except in compliance with
+	the License.  You may obtain a copy of the License at
+	
+	http://www.apache.org/licenses/LICENSE-2.0
+	
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+-->
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean id="uk.co.tandf.bopp.metadatachecker.services.SurveyMonkeyService"
+          class="uk.co.tandf.bopp.metadatachecker.services.SurveyMonkeyServiceImpl">
+        <property name="accessToken" value="${bopp.surveymonkey.accessToken}"/>
+        <property name="apiKey" value="${bopp.surveymonkey.apiKey}"/>
+        <property name="boppUtilsService" ref="uk.co.tandf.bopp.services.boppUtilsService"/>
+    </bean>
+
+    <bean id="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService"
+          class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="proxyInterfaces">
+            <value>uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService</value>
+        </property>
+        <property name="target">
+            <bean class="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerServiceImpl">
+                <property name="interruptT1TimerDuration" value="${bopp.workflow.interruptT1TimerDuration}"/>
+                <property name="interruptT5TimerDuration" value="${bopp.workflow.interruptT5TimerDuration}"/>
+                <property name="interruptT11TimerDuration" value="${bopp.workflow.interruptT11TimerDuration}"/>
+                <property name="wait2Check4MetadataTimerDuration" value="${bopp.workflow.wait2Check4MetadataTimerDuration}"/>
+                <property name="wait2Check4ContentTimerDuration" value="${bopp.workflow.wait2Check4ContentTimerDuration}"/>
+
+                <property name="nodeService" ref="nodeService"/>
+                <property name="contentService" ref="contentService"/>
+
+                <property name="alfrescoRepoUtilsService" ref="uk.co.tandf.bopp.services.alfrescoRepoUtilsService"/>
+                <property name="workflowUtilsService" ref="uk.co.tandf.bopp.services.workflowUtilsService"/>
+                <property name="boppUtilsService" ref="uk.co.tandf.bopp.services.boppUtilsService"/>
+                <property name="surveyMonkeyService" ref="uk.co.tandf.bopp.metadatachecker.services.SurveyMonkeyService"/>
+                <property name="createChapterFolder" ref="uk.co.tandf.bopp.services.createChapterFolderService"/>
+                <property name="checkerLog" ref="MetadataCheckerLogger"/>
+            </bean>
+        </property>
+        <property name="transactionAttributeSource">
+            <bean class="org.springframework.transaction.annotation.AnnotationTransactionAttributeSource"/>
+        </property>
+    </bean>
+
+    
+</beans>

@@ -1,0 +1,34 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+          http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <!-- ingestion-context.xml.xml file is used for patch definitions, importers,
+		 workflow, and loading custom content models.  -->
+
+    <bean id="uk.co.tandf.bopp.actions.metadataCheckerExecuter"
+          class="uk.co.tandf.bopp.metadatachecker.actions.MetadataCheckerExecuter">
+        <property name="frontlistPath" value="${bopp.checker.metadata.filepathtocheckfrontlist}" />
+        <property name="backlistPath" value="${bopp.checker.metadata.filepathtocheckbacklist}" />
+        <property name="maxCsvSizeUncompressed" value="${bopp.checker.metadata.csv.uncompressed.max.size}" />
+        <property name="cronExpression" value="${bopp.checker.metadata.cronexpression}"/>
+        <property name="cronStartDelay" value="${bopp.checker.metadata.cronstartdelay}"/>
+
+        <property name="metadataIngestionService" ref="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService" />
+        <property name="alfrescoRepoUtilsService" ref="uk.co.tandf.bopp.services.alfrescoRepoUtilsService"/>
+        <property name="boppUtilsService" ref="uk.co.tandf.bopp.services.boppUtilsService"/>
+        <property name="checkerLog" ref="MetadataCheckerLogger" />
+    </bean>
+
+    <bean id="uk.co.tandf.bopp.actions.surveymonkeyCheckerExecuter"
+          class="uk.co.tandf.bopp.metadatachecker.actions.SurveyMonkeyCheckerExecuter">
+        <property name="surveyMonkeyCallsEnabled" value="${bopp.checker.metadata.surveymonkey.calls.enabled}" />
+        <property name="cronExpression" value="${bopp.checker.metadata.surveymonkey.cronexpression}"/>
+        <property name="cronStartDelay" value="${bopp.checker.metadata.surveymonkey.cronstartdelay}"/>
+
+        <property name="metadataIngestionService" ref="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService" />
+        <property name="alfrescoRepoUtilsService" ref="uk.co.tandf.bopp.services.alfrescoRepoUtilsService"/>
+        <property name="checkerLog" ref="MetadataCheckerLogger" />
+    </bean>
+</beans>
