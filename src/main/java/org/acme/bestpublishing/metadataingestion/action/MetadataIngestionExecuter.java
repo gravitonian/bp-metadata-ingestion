@@ -113,7 +113,7 @@ public class MetadataIngestionExecuter {
         return this.cronExpression;
     }
 
-    @ManagedAttribute(description = "Checker start delay after bootstrap (ms)")
+    @ManagedAttribute(description = "Ingestion start delay after bootstrap (ms)")
     public int getCronStartDelay() {
         return this.cronStartDelay;
     }
@@ -163,7 +163,7 @@ public class MetadataIngestionExecuter {
 
             File[] zipFiles = bestPubUtilsService.findFilesUsingExtension(folder, "zip");
             zipQueueSize = zipFiles.length;
-            LOG.debug("Found [{}] content files", zipFiles.length);
+            LOG.debug("Found [{}] metadata files", zipFiles.length);
 
             for (File zipFile : zipFiles) {
                 if (processZipFile(zipFile, metadataIncomingFolderNodeRef)) {
@@ -180,81 +180,51 @@ public class MetadataIngestionExecuter {
                 zipQueueSize--;
             }
 
-            LOG.debug("Processed [{}] content ZIP files", zipFiles.length);
+            LOG.debug("Processed [{}] metadata ZIP files", zipFiles.length);
         } catch (Exception e) {
-            LOG.error("Encountered an error when ingesting content - exiting", e);
+            LOG.error("Encountered an error when ingesting metadata - exiting", e);
         }
     }
 
     /**
-     * Gets all the backlist zip files form file system location passed in, validates the contained CSVs and then
-     * sends for processing and saving in Alfresco.
+     * Process one metadata ZIP file and upload its content to Alfresco
      *
-     * @param incomingMetadataFolderNodeRef  folder node reference for where in Alfresco to store incoming metadata files
-     * @param backlistMetadataFilesystemPath the path in the filesystem where backlist metadata can be found in
-     *                                       the form of ZIP files
-     * @return the number of backlist zip files that were processed
+     * @param zipFile              the ZIP file that should be processed and uploaded
+     * @param metadataFolderNodeRef the target folder for new ISBN metadata packages
+     * @return true if processed file ok, false if there was an error
      */
-    private int processBacklistMetadataFromFilesystem(final NodeRef incomingMetadataFolderNodeRef,
-                                                      final String backlistMetadataFilesystemPath) {
-        File backlistFolder = new File(backlistMetadataFilesystemPath);
-        if (!backlistFolder.exists()) {
-            throw new IllegalArgumentException("The " + backlistMetadataFilesystemPath +
-                    " path does not exist, cannot check for backlist metadata");
+    private boolean processZipFile(File zipFile, NodeRef metadataFolderNodeRef)
+            throws IOException {
+        LOG.debug("Processing zip file [{}]", zipFile.getName());
+
+        String isbn = FilenameUtils.removeExtension(zipFile.getName());
+        if (!bestPubUtilsService.isISBN(isbn)) {
+            LOG.error("Error processing zip file [{}], filename is not an ISBN number", zipFile.getName());
+
+            return false;
         }
 
-        if (!backlistFolder.isDirectory()) {
-            throw new IllegalArgumentException("The " + backlistMetadataFilesystemPath +
-                    " path is not for a directory, cannot check for backlist metadata");
+        // Check if ISBN already exists under /Company Home/Data Dictionary/BestPub/Incoming/Metadata
+        NodeRef targetMetadataFolderNodeRef = null;
+        NodeRef isbnFolderNodeRef = alfrescoRepoUtilsService.getChildByName(metadataFolderNodeRef, isbn);
+        if (isbnFolderNodeRef == null) {
+            // We got a new ISBN that has not been published before
+            // And this means uploading the content package to /Data Dictionary/BestPub/Incoming/Metadata
+            targetMetadataFolderNodeRef = metadataFolderNodeRef;
+
+            LOG.debug("Found new ISBN {} that has not been published before, " +
+                    "uploading to /Data Dictionary/BestPub/Incoming/Metadata", isbn);
+        } else {
+            // We got an ISBN that has already been published, so we need to republish
         }
 
-        File[] zipFiles = boppUtilsService.findFilesUsingExtension(backlistFolder, "zip");
-        zipQueueSize = zipFiles.length;
-
-        for (File zipFile : zipFiles) {
-            zipQueueSize--;
-            metadataIngestionService.processBacklistMetadataZip(incomingMetadataFolderNodeRef, zipFile,
-                    backlistMetadataFilesystemPath, maxCsvSizeUncompressed);
+        try {
+            metadataIngestionService.importZipFileContent(zipFile, targetMetadataFolderNodeRef, isbn);
+            return true;
+        } catch (Exception e) {
+            LOG.error("Error processing zip file " + zipFile.getName(), e);
         }
 
-        LOG.debug("Processed [{}] backlist metadata ZIP files", zipFiles.length);
-
-        return zipFiles.length;
-    }
-
-    /**
-     * Gets all the backlist zip files form file system location passed in, validates the contained CSVs and then
-     * sends for processing and saving in Alfresco.
-     *
-     * @param incomingMetadataFolderNodeRef   folder node reference for where in Alfresco to store incoming metadata files
-     * @param frontlistMetadataFilesystemPath the path in the filesystem where frontlist metadata can be found in
-     *                                        the form of ZIP files
-     * @return the number of frontlist zip files that were processed
-     */
-    private int processFrontListMetadataFromFilesystem(final NodeRef incomingMetadataFolderNodeRef,
-                                                       final String frontlistMetadataFilesystemPath) {
-        File frontlistFolder = new File(frontlistMetadataFilesystemPath);
-        if (!frontlistFolder.exists()) {
-            throw new AlfrescoRuntimeException("The " + frontlistMetadataFilesystemPath +
-                    " path does not exist, cannot check for frontlist metadata");
-        }
-
-        if (!frontlistFolder.isDirectory()) {
-            throw new AlfrescoRuntimeException("The " + frontlistMetadataFilesystemPath +
-                    " path is not for a directory, cannot check for frontlist metadata");
-        }
-
-        File[] zipFiles = boppUtilsService.findFilesUsingExtension(frontlistFolder, "zip");
-        frontlistZipQueueSize = zipFiles.length;
-
-        for (File zipFile : zipFiles) {
-            frontlistZipQueueSize--;
-            metadataIngestionService.processFrontlistMetadataZip(incomingMetadataFolderNodeRef, zipFile,
-                    frontlistMetadataFilesystemPath, maxCsvSizeUncompressed);
-        }
-
-        LOG.debug("Processed [{}] frontlist metadata ZIP files", zipFiles.length);
-
-        return zipFiles.length;
+        return false;
     }
 }
