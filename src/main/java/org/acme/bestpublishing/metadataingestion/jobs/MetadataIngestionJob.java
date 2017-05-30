@@ -16,6 +16,7 @@ limitations under the License.
 */
 package org.acme.bestpublishing.metadataingestion.jobs;
 
+import org.acme.bestpublishing.metadataingestion.action.MetadataIngestionExecuter;
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.repo.security.authentication.AuthenticationUtil;
 import org.alfresco.schedule.AbstractScheduledLockedJob;
@@ -23,35 +24,34 @@ import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.StatefulJob;
-import uk.co.tandf.bopp.metadatachecker.actions.MetadataCheckerExecuter;
 
 /**
- * Run the Metadata Checker Job
+ * Run the Metadata Ingestion Job
  * <p/>
  * Extends the AbstractScheduledLockedJob class that has job lock service functionality to lock job so
  * it can run safely in a cluster.
  * <p/>
  * Important: implement StatefulJob so the job is not triggered concurrently by the scheduler
  *
- * @author martin.bergljung@ixxus.com
+ * @author martin.bergljung@marversolutions.org
  */
 public class MetadataIngestionJob extends AbstractScheduledLockedJob implements StatefulJob {
     @Override
     public void executeJob(JobExecutionContext context) throws JobExecutionException {
         JobDataMap jobData = context.getJobDetail().getJobDataMap();
 
-        // Extract the Metadata Checker to use
-        Object metadataCheckerExecuterObj = jobData.get("metadataCheckerExecuter");
-        if (metadataCheckerExecuterObj == null || !(metadataCheckerExecuterObj instanceof MetadataCheckerExecuter)) {
+        // Extract the Metadata Ingestion component to use
+        Object metadataIngestionExecuterObj = jobData.get("metadataIngestionExecuter");
+        if (metadataIngestionExecuterObj == null || !(metadataIngestionExecuterObj instanceof MetadataIngestionExecuter)) {
             throw new AlfrescoRuntimeException(
-                    "MetadataCheckerJob data must contain valid 'metadataCheckerExecuter' reference");
+                    "MetadataIngestionJob data must contain valid 'metadataIngestionExecuter' reference");
         }
 
-        final MetadataCheckerExecuter metadataCheckerExecuter = (MetadataCheckerExecuter) metadataCheckerExecuterObj;
+        final MetadataIngestionExecuter metadataIngestionExecuter = (MetadataIngestionExecuter) metadataIngestionExecuterObj;
 
         AuthenticationUtil.runAs(new AuthenticationUtil.RunAsWork<Object>() {
             public Object doWork() throws Exception {
-                metadataCheckerExecuter.execute();
+                metadataIngestionExecuter.execute();
                 return null;
             }
         }, AuthenticationUtil.getAdminUserName());
