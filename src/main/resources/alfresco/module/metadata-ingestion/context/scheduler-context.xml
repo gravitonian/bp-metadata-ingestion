@@ -19,14 +19,16 @@
 	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	   xsi:schemaLocation="http://www.springframework.org/schema/beans
           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
-	<bean id="uk.co.tandf.bopp.metadatachecker.jobDetail" class="org.springframework.scheduling.quartz.JobDetailBean">
+
+	<bean id="org.acme.bestpublishing.metadataingestion.jobDetail"
+		  class="org.springframework.scheduling.quartz.JobDetailBean">
 		<property name="jobClass">
-			<value>uk.co.tandf.bopp.metadatachecker.jobs.MetadataCheckerJob</value>
+			<value>org.acme.bestpublishing.metadataingestion.jobs.MetadataIngestionJob</value>
 		</property>
 		<property name="jobDataAsMap">
 			<map>
-				<entry key="metadataCheckerExecuter">
-					<ref bean="uk.co.tandf.bopp.actions.metadataCheckerExecuter" />
+				<entry key="metadataIngestionExecuter">
+					<ref bean="org.acme.bestpublishing.metadataingestion.action.metadataIngestionExecuter" />
 				</entry>
 				<entry key="jobLockService">
 					<ref bean="jobLockService" />
@@ -35,51 +37,23 @@
 		</property>
 	</bean>
 
-	<bean id="uk.co.tandf.bopp.metadatachecker.trigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+	<bean id="org.acme.bestpublishing.metadataingestion.trigger"
+		  class="org.springframework.scheduling.quartz.CronTriggerBean">
 		<property name="jobDetail">
-			<ref bean="uk.co.tandf.bopp.metadatachecker.jobDetail" />
+			<ref bean="org.acme.bestpublishing.metadataingestion.jobDetail" />
 		</property>
 		<property name="cronExpression">
-			<value>${bopp.checker.metadata.cronexpression}</value>
+			<value>${bestpub.ingestion.metadata.cronExpression}</value>
 		</property>
 		<property name="startDelay">
-			<value>${bopp.checker.metadata.cronstartdelay}</value>
-		</property>
-	</bean>
-
-	<bean id="uk.co.tandf.bopp.surveymonkeychecker.jobDetail" class="org.springframework.scheduling.quartz.JobDetailBean">
-		<property name="jobClass">
-			<value>uk.co.tandf.bopp.metadatachecker.jobs.SurveyMonkeyCheckerJob</value>
-		</property>
-		<property name="jobDataAsMap">
-			<map>
-				<entry key="surveyMonkeyCheckerExecuter">
-					<ref bean="uk.co.tandf.bopp.actions.surveymonkeyCheckerExecuter" />
-				</entry>
-				<entry key="jobLockService">
-					<ref bean="jobLockService" />
-				</entry>
-			</map>
-		</property>
-	</bean>
-
-	<bean id="uk.co.tandf.bopp.surveymonkeychecker.trigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
-		<property name="jobDetail">
-			<ref bean="uk.co.tandf.bopp.surveymonkeychecker.jobDetail" />
-		</property>
-		<property name="cronExpression">
-			<value>${bopp.checker.metadata.surveymonkey.cronexpression}</value>
-		</property>
-		<property name="startDelay">
-			<value>${bopp.checker.metadata.surveymonkey.cronstartdelay}</value>
+			<value>${bestpub.ingestion.metadata.cronStartDelay}</value>
 		</property>
 	</bean>
 
 	<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
 		<property name="triggers">
 			<list>
-				<ref bean="uk.co.tandf.bopp.metadatachecker.trigger"/>
-				<ref bean="uk.co.tandf.bopp.surveymonkeychecker.trigger"/>
+				<ref bean="org.acme.bestpublishing.metadataingestion.trigger"/>
 			</list>
 		</property>
 	</bean>

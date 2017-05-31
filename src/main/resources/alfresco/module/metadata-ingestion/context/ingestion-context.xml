@@ -7,28 +7,17 @@
     <!-- ingestion-context.xml.xml file is used for patch definitions, importers,
 		 workflow, and loading custom content models.  -->
 
-    <bean id="uk.co.tandf.bopp.actions.metadataCheckerExecuter"
-          class="uk.co.tandf.bopp.metadatachecker.actions.MetadataCheckerExecuter">
-        <property name="frontlistPath" value="${bopp.checker.metadata.filepathtocheckfrontlist}" />
-        <property name="backlistPath" value="${bopp.checker.metadata.filepathtocheckbacklist}" />
-        <property name="maxCsvSizeUncompressed" value="${bopp.checker.metadata.csv.uncompressed.max.size}" />
-        <property name="cronExpression" value="${bopp.checker.metadata.cronexpression}"/>
-        <property name="cronStartDelay" value="${bopp.checker.metadata.cronstartdelay}"/>
+    <bean id="org.acme.bestpublishing.metadataingestion.action.metadataIngestionExecuter"
+          class="org.acme.bestpublishing.metadataingestion.action.MetadataIngestionExecuter">
+        <property name="filesystemPathToCheck" value="${bestpub.ingestion.metadata.filesystemPathToCheck}"/>
+        <property name="alfrescofolderpath" value="${bestpub.ingestion.metadata.alfrescoFolderPath}"/>
+        <property name="cronExpression" value="${bestpub.ingestion.metadata.cronExpression}"/>
+        <property name="cronStartDelay" value="${bestpub.ingestion.metadata.cronStartDelay}"/>
 
-        <property name="metadataIngestionService" ref="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService" />
-        <property name="alfrescoRepoUtilsService" ref="uk.co.tandf.bopp.services.alfrescoRepoUtilsService"/>
-        <property name="boppUtilsService" ref="uk.co.tandf.bopp.services.boppUtilsService"/>
-        <property name="checkerLog" ref="MetadataCheckerLogger" />
+        <property name="alfrescoRepoUtilsService" ref="org.acme.bestpublishing.services.alfrescoRepoUtilsService"/>
+        <property name="bestPubUtilsService" ref="org.acme.bestpublishing.services.bestPubUtilsService"/>
+        <property name="ingestionService"
+                  ref="org.acme.bestpublishing.metadataingestion.services.metadataIngestionService"/>
     </bean>
 
-    <bean id="uk.co.tandf.bopp.actions.surveymonkeyCheckerExecuter"
-          class="uk.co.tandf.bopp.metadatachecker.actions.SurveyMonkeyCheckerExecuter">
-        <property name="surveyMonkeyCallsEnabled" value="${bopp.checker.metadata.surveymonkey.calls.enabled}" />
-        <property name="cronExpression" value="${bopp.checker.metadata.surveymonkey.cronexpression}"/>
-        <property name="cronStartDelay" value="${bopp.checker.metadata.surveymonkey.cronstartdelay}"/>
-
-        <property name="metadataIngestionService" ref="uk.co.tandf.bopp.metadatachecker.services.MetadataCheckerService" />
-        <property name="alfrescoRepoUtilsService" ref="uk.co.tandf.bopp.services.alfrescoRepoUtilsService"/>
-        <property name="checkerLog" ref="MetadataCheckerLogger" />
-    </bean>
 </beans>

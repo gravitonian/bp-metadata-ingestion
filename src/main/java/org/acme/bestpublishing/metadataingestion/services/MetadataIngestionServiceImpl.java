@@ -18,7 +18,7 @@ package org.acme.bestpublishing.metadataingestion.services;
 
 import org.acme.bestpublishing.error.ProcessingErrorCode;
 import org.acme.bestpublishing.exceptions.IngestionException;
-import org.acme.bestpublishing.model.BestPubContentModel;
+import org.acme.bestpublishing.model.BestPubMetadataFileModel;
 import org.acme.bestpublishing.model.BestPubWorkflowModel;
 import org.acme.bestpublishing.services.AlfrescoRepoUtilsService;
 import org.acme.bestpublishing.services.AlfrescoWorkflowUtilsService;
@@ -29,7 +29,7 @@ import org.alfresco.service.ServiceRegistry;
 import org.alfresco.service.cmr.repository.*;
 import org.alfresco.service.cmr.workflow.WorkflowInstance;
 import org.alfresco.service.namespace.QName;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
 import java.util.*;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /**
  * Implementation of the IngestionService interface to support metadata ingestion.
@@ -128,42 +130,82 @@ public class MetadataIngestionServiceImpl implements IngestionService {
     public void importZipFileContent(File zipFile, NodeRef alfrescoFolderNodeRef, String isbn) {
         String zipFilename = zipFile.getName().trim();
 
-        if (isValidGenre(zipFilename) == false) {
-            LOG.error("Metadata ZIP file [{}] contains an invalid genre name, cannot process it", zipFilename);
-            throw new IngestionException(ProcessingErrorCode.METADATA_INGESTION_INVALID_GENRE);
-        }
-
         // Verify that metadata ZIP is new and has not already been processed (is being processed)
         String processingStatus = getZipProcessingStatus(isbn, zipFilename, alfrescoFolderNodeRef);
         if (StringUtils.equals(processingStatus, PROCESSING_STATUS_NEW)) {
             NodeRef zipFileNodeRef = alfrescoRepoUtilsService.createFile(alfrescoFolderNodeRef, zipFile);
             LOG.debug("Metadata ZIP file [{}] uploaded to Alfresco", zipFilename);
 
-            // Get the book title from the main book metadata txt file
-            String bookTitle = getBookTitleFromBookMetadataTxt();
+            // Extract all metadata (i.e. both book metadata and all chapter metadata)
+            HashMap<String, Properties> bookAndChapterMetadata = extractBookAndChapterMetadata(zipFile);
+
+            // Get the book metadata, keyed on ISBN as contained in {ISBN}.txt
+            Properties bookMetadata = bookAndChapterMetadata.get(isbn);
+            if (bookMetadata == null) {
+                throw new IngestionException(ProcessingErrorCode.METADATA_INGESTION_MISSING_BOOK_METADATA);
+            }
+
+            if (isValidGenre(bookMetadata) == false) {
+                LOG.error("Book Metadata in ZIP file [{}] contains an invalid genre name, cannot process it",
+                        zipFilename);
+                throw new IngestionException(ProcessingErrorCode.METADATA_INGESTION_INVALID_GENRE);
+            }
 
             // Start up publishing workflow instance for ISBN
-            List<NodeRef> workflowPackageFiles = new ArrayList<>();
-            workflowPackageFiles.add(zipFileNodeRef);
-            WorkflowInstance newWorkflowInstance = startBestPubWorkflowInstance(
-                    isbn, bookTitle, workflowPackageFiles);
+            WorkflowInstance newWorkflowInstance = startBestPubWorkflowInstance(isbn, bookAndChapterMetadata);
             LOG.debug("Publishing workflow has been started for [isbn={}][definition={}][instance={}]",
                     new Object[]{isbn, newWorkflowInstance.getDefinition(), newWorkflowInstance.getId()});
         }
     }
 
     /**
-     * Extracts subject name from zip filename and matches it against the list
-     * of valid subject names
+     * Extract all the book and chapter metadata from the metadata ZIP file.
      *
-     * @return true if a valid subject name was found in filename, otherwise
-     * false
+     * @param file the file representing the ZIP file
+     * @return a map with metadata, filename without extension -> metadata properties object.
      */
-    private boolean isValidGenre(String zipFilename) {
-        // TODO
-        //String subjectNameFromZip = bestPubUtilsService.getBookGenreName(zipFilename);
-        //return bestPubUtilsService.getAvailableSubjects().contains(subjectNameFromZip);
-        return true;
+    private HashMap<String,Properties> extractBookAndChapterMetadata(File file) {
+        ZipFile zipFile;
+        String zipFileName = "Unknown";
+        HashMap<String,Properties> metadata = new HashMap<>();
+
+        try {
+            zipFile = new ZipFile(file);
+            zipFileName = zipFile.getName();
+            Enumeration enumeration = zipFile.entries();
+            while (enumeration.hasMoreElements()) {
+                ZipEntry zipEntry = (ZipEntry) enumeration.nextElement();
+                if (zipEntry.isDirectory() == false) {
+                    // If the entry is a file, extract as Properties.
+                    // Note. the input stream for the entry is closed by Alfresco ContentWriter,
+                    // and also when you close ZipFile
+                    String propFilenameWithoutExtension = FilenameUtils.getBaseName(zipEntry.getName());
+                    BufferedInputStream bis = new BufferedInputStream(zipFile.getInputStream(zipEntry));
+                    Properties metadataProperties = new Properties();
+                    metadataProperties.load(bis);
+                    metadata.put(propFilenameWithoutExtension, metadataProperties);
+                }
+            }
+
+            zipFile.close();
+        } catch (IOException ioe) {
+            String msg = "Error extracting metadata ZIP " +
+                    zipFileName + " [error=" + ioe.getMessage() + "]";
+            throw new IngestionException(ProcessingErrorCode.METADATA_INGESTION_EXTRACT_ZIP, msg);
+        }
+
+        return metadata;
+    }
+
+    /**
+     * Extracts book genre name from book metadata and matches it against the list
+     * of valid genre names.
+     *
+     * @return true if a valid genre name was found in filename, otherwise false
+     */
+    private boolean isValidGenre(Properties bookMetadataProps) {
+        return bestPubUtilsService.getAvailableGenreNames().contains(
+                bookMetadataProps.get(BestPubMetadataFileModel.BOOK_METADATA_GENRE_PROP_NAME));
     }
 
     /**
@@ -207,55 +249,19 @@ public class MetadataIngestionServiceImpl implements IngestionService {
     }
 
     /**
-     * Get the book title from the passed in Book Metadata Text file.
-     *
-     * @param bookMetadataTxtIs
-     * @return book title or null if could not be found
-     */
-    private String getBookTitleFromBookMetadataTxt(final InputStream bookMetadataTxtIs) {
-        String bookTitle = BOOK_TITLE_UNKNOWN;
-
-        Reader bufferedReader = new BufferedReader(new InputStreamReader((bookMetadataTxtIs)));
-        try {
-            byte[] metadataText = IOUtils.toByteArray(bookMetadataTxtIs);
-            bookTitle = parseTxtForBookTitle(metadataText);
-        } catch (IOException e) {
-            LOG.error("Could not get the book title from Book Metadata Txt file", e);
-        } finally {
-            IOUtils.closeQuietly(bufferedReader);
-            IOUtils.closeQuietly(bookMetadataTxtIs);
-        }
-
-        return bookTitle;
-    }
-
-    /**
-     * Parse out book title from book metadata properties from text file
-     *
-     * @param metadataText
-     * @return
-     */
-    private String parseTxtForBookTitle(byte[] metadataText) {
-        // TODO: Must be a way to read txt files as properties files...
-        return "Unkown";
-    }
-
-    /**
      * Starts a new Best Publishing workflow for a specific ISBN with book metadata.
      *
      * @param isbn                 the related ISBN
-     * @param workflowPackageFiles the metadata ZIP file to attach to bpm_package
-     * @param bookTitle            the book title
+     * @param allMetadata          all the metadata for the book, including chapter metadata
      * @return the new Activiti workflow instance
      */
     private WorkflowInstance startBestPubWorkflowInstance(String isbn,
-                                                          String bookTitle,
-                                                          List<NodeRef> workflowPackageFiles) {
+                                                          HashMap<String, Properties> allMetadata) {
         // Setup workflow properties
         Map<QName, Serializable> props = new HashMap<>();
         props.put(WorkflowModel.PROP_WORKFLOW_DESCRIPTION, "Best Publishing workflow for " + isbn);
         props.put(BestPubWorkflowModel.PROP_RELATED_ISBN, isbn);
-        props.put(BestPubContentModel.BookInfoAspect.Prop.BOOK_TITLE, bookTitle);
+        props.put(BestPubWorkflowModel.PROP_ALL_METADATA, allMetadata);
         props.put(BestPubWorkflowModel.PROP_CONTENT_FOUND, false);
         props.put(BestPubWorkflowModel.PROP_CONTENT_ERROR_FOUND, false);
         props.put(BestPubWorkflowModel.PROP_METADATA_CHAPTER_MATCHING_OK, false);
@@ -267,7 +273,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         props.put(BestPubWorkflowModel.PROP_WAIT_2_CHECK_CONTENT_TIMER_DURATION, wait2Check4ContentTimerDuration);
 
         // Start it
-        return alfrescoWorkflowUtilsService.startWorkflowInstance(BestPubWorkflowModel.BESTPUB_PUBLISHING_WORKFLOW_NAME,
-                workflowPackageFiles, props);
+        return alfrescoWorkflowUtilsService.startWorkflowInstance(
+                BestPubWorkflowModel.BESTPUB_PUBLISHING_WORKFLOW_NAME, props);
     }
 }
