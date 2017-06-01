@@ -18,6 +18,7 @@ package org.acme.bestpublishing.metadataingestion.services;
 
 import org.acme.bestpublishing.error.ProcessingErrorCode;
 import org.acme.bestpublishing.exceptions.IngestionException;
+import org.acme.bestpublishing.model.BestPubContentModel;
 import org.acme.bestpublishing.model.BestPubMetadataFileModel;
 import org.acme.bestpublishing.model.BestPubWorkflowModel;
 import org.acme.bestpublishing.services.AlfrescoRepoUtilsService;
@@ -37,9 +38,15 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import static org.acme.bestpublishing.model.BestPubContentModel.*;
+import static org.acme.bestpublishing.model.BestPubWorkflowModel.*;
+import static org.acme.bestpublishing.model.BestPubMetadataFileModel.*;
 
 /**
  * Implementation of the IngestionService interface to support metadata ingestion.
@@ -50,6 +57,8 @@ import java.util.zip.ZipFile;
 @Transactional(readOnly = true)
 public class MetadataIngestionServiceImpl implements IngestionService {
     private static final Logger LOG = LoggerFactory.getLogger(MetadataIngestionServiceImpl.class);
+
+    private final DateFormat publishingDateFormat = new SimpleDateFormat("dd/MM/YYYY");
 
     private static final String PROCESSING_STATUS_NEW = "new";
     private static final String PROCESSING_STATUS_SUCCESSFUL = "success";
@@ -183,7 +192,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
      */
     private boolean isValidGenre(Properties bookMetadataProps) {
         return bestPubUtilsService.getAvailableGenreNames().contains(
-                bookMetadataProps.get(BestPubMetadataFileModel.BOOK_METADATA_GENRE_PROP_NAME));
+                bookMetadataProps.get(BOOK_METADATA_GENRE_PROP_NAME));
     }
 
     /**
@@ -204,7 +213,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         // Then check if it has already been processed and workflow instance exists,
         // but ZIP file removed from /Data Dictionary/BestPub/Incoming/Metadata
         WorkflowInstance workflowInstance = alfrescoWorkflowUtilsService.getWorkflowInstanceForIsbn(
-                BestPubWorkflowModel.BESTPUB_PUBLISHING_WORKFLOW_NAME, isbn);
+                BESTPUB_PUBLISHING_WORKFLOW_NAME, isbn);
         if (workflowInstance != null) {
             LOG.error("Metadata [{}] has already been processed, cannot process it again [workflowId={}]",
                     zipFilename, workflowInstance.getId());
@@ -235,21 +244,33 @@ public class MetadataIngestionServiceImpl implements IngestionService {
      */
     private WorkflowInstance startBestPubWorkflowInstance(String isbn,
                                                           HashMap<String, Properties> allMetadata) {
+        // Set the Publishing date to now as a 'backlist' book has already been published
+        Date today = new Date();
+
         // Setup workflow properties
         Map<QName, Serializable> props = new HashMap<>();
         props.put(WorkflowModel.PROP_WORKFLOW_DESCRIPTION, "Best Publishing workflow for " + isbn);
-        props.put(BestPubWorkflowModel.PROP_RELATED_ISBN, isbn);
-        props.put(BestPubWorkflowModel.PROP_ALL_METADATA, allMetadata);
-        props.put(BestPubWorkflowModel.PROP_CONTENT_FOUND, false);
-        props.put(BestPubWorkflowModel.PROP_CONTENT_ERROR_FOUND, false);
-        props.put(BestPubWorkflowModel.PROP_METADATA_CHAPTER_MATCHING_OK, false);
-        props.put(BestPubWorkflowModel.PROP_CHAPTER_FOLDER_HIERARCHY_EXISTS, false);
-        props.put(BestPubWorkflowModel.PROP_INTERRUPT_T1_TIMER_DURATION, interruptT1TimerDuration);
-        props.put(BestPubWorkflowModel.PROP_WAIT_2_CHECK_CONTENT_TIMER_DURATION,
-                wait2Check4ContentTimerDuration);
+        // Process variable for the related ISBN
+        props.put(PROP_RELATED_ISBN, isbn);
+        // Process variable that contains all metadata ingested
+        props.put(PROP_ALL_METADATA, allMetadata);
+        // Process variables for the first T1 Validation User Task form
+        Properties bookInfo = allMetadata.get(isbn);
+        props.put(BookInfoAspect.Prop.BOOK_TITLE, (String)bookInfo.get(BOOK_METADATA_TITLE_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_GENRE_NAME, (String)bookInfo.get(BOOK_METADATA_GENRE_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_AUTHORS_NAME, (String)bookInfo.get(BOOK_METADATA_AUTHORS_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_CHAPTERS, (String)bookInfo.get(BOOK_METADATA_NR_OF_CHAPTERS_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_PAGES, (String)bookInfo.get(BOOK_METADATA_NR_OF_PAGES_PROP_NAME));
+        props.put(PROP_PUBLISHING_DATE, today);
+        // Process variables that control the flow
+        props.put(PROP_CONTENT_FOUND, false);
+        props.put(PROP_CONTENT_ERROR_FOUND, false);
+        props.put(PROP_METADATA_CHAPTER_MATCHING_OK, false);
+        props.put(PROP_CHAPTER_FOLDER_HIERARCHY_EXISTS, false);
+        props.put(PROP_INTERRUPT_T1_TIMER_DURATION, interruptT1TimerDuration);
+        props.put(PROP_WAIT_2_CHECK_CONTENT_TIMER_DURATION, wait2Check4ContentTimerDuration);
 
         // Start it
-        return alfrescoWorkflowUtilsService.startWorkflowInstance(
-                BestPubWorkflowModel.BESTPUB_PUBLISHING_WORKFLOW_NAME, props);
+        return alfrescoWorkflowUtilsService.startWorkflowInstance(BESTPUB_PUBLISHING_WORKFLOW_NAME, props);
     }
 }
