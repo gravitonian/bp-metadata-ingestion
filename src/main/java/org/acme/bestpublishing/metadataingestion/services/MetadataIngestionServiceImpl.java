@@ -63,21 +63,15 @@ public class MetadataIngestionServiceImpl implements IngestionService {
     private AlfrescoWorkflowUtilsService alfrescoWorkflowUtilsService;
     private BestPubUtilsService bestPubUtilsService;
 
-    //private CreateChapterFolderService createChapterFolder;
-
     /**
      * Alfresco services
      */
     private ServiceRegistry serviceRegistry;
 
     /**
-     * Workflow timers, values passed in from alfresco-global.properties
-     * settings
+     * Workflow timers, values passed in from alfresco-global.properties settings
      */
     private String interruptT1TimerDuration;
-    private String interruptT5TimerDuration;
-    private String interruptT11TimerDuration;
-    private String wait2Check4MetadataTimerDuration;
     private String wait2Check4ContentTimerDuration;
 
     /**
@@ -101,25 +95,9 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         this.interruptT1TimerDuration = interruptT1TimerDuration;
     }
 
-    public void setInterruptT5TimerDuration(final String interruptT5TimerDuration) {
-        this.interruptT5TimerDuration = interruptT5TimerDuration;
-    }
-
-    public void setInterruptT11TimerDuration(final String interruptT11TimerDuration) {
-        this.interruptT11TimerDuration = interruptT11TimerDuration;
-    }
-
-    public void setWait2Check4MetadataTimerDuration(final String wait2Check4MetadataTimerDuration) {
-        this.wait2Check4MetadataTimerDuration = wait2Check4MetadataTimerDuration;
-    }
-
     public void setWait2Check4ContentTimerDuration(final String wait2Check4ContentTimerDuration) {
         this.wait2Check4ContentTimerDuration = wait2Check4ContentTimerDuration;
     }
-
-   /* public void setCreateChapterFolder(final CreateChapterFolderService createChapterFolder) {
-        this.createChapterFolder = createChapterFolder;
-    }*/
 
    /**
      * Interface Implementation
@@ -133,7 +111,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         // Verify that metadata ZIP is new and has not already been processed (is being processed)
         String processingStatus = getZipProcessingStatus(isbn, zipFilename, alfrescoFolderNodeRef);
         if (StringUtils.equals(processingStatus, PROCESSING_STATUS_NEW)) {
-            NodeRef zipFileNodeRef = alfrescoRepoUtilsService.createFile(alfrescoFolderNodeRef, zipFile);
+            alfrescoRepoUtilsService.createFile(alfrescoFolderNodeRef, zipFile);
             LOG.debug("Metadata ZIP file [{}] uploaded to Alfresco", zipFilename);
 
             // Extract all metadata (i.e. both book metadata and all chapter metadata)
@@ -267,10 +245,8 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         props.put(BestPubWorkflowModel.PROP_METADATA_CHAPTER_MATCHING_OK, false);
         props.put(BestPubWorkflowModel.PROP_CHAPTER_FOLDER_HIERARCHY_EXISTS, false);
         props.put(BestPubWorkflowModel.PROP_INTERRUPT_T1_TIMER_DURATION, interruptT1TimerDuration);
-        props.put(BestPubWorkflowModel.PROP_INTERRUPT_T5_TIMER_DURATION, interruptT5TimerDuration);
-        props.put(BestPubWorkflowModel.PROP_INTERRUPT_T11_TIMER_DURATION, interruptT11TimerDuration);
-        props.put(BestPubWorkflowModel.PROP_WAIT_2_CHECK_METADATA_TIMER_DURATION, wait2Check4MetadataTimerDuration);
-        props.put(BestPubWorkflowModel.PROP_WAIT_2_CHECK_CONTENT_TIMER_DURATION, wait2Check4ContentTimerDuration);
+        props.put(BestPubWorkflowModel.PROP_WAIT_2_CHECK_CONTENT_TIMER_DURATION,
+                wait2Check4ContentTimerDuration);
 
         // Start it
         return alfrescoWorkflowUtilsService.startWorkflowInstance(
