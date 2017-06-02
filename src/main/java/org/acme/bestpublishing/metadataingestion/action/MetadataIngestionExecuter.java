@@ -17,7 +17,6 @@ limitations under the License.
 package org.acme.bestpublishing.metadataingestion.action;
 
 import org.acme.bestpublishing.actions.AbstractIngestionExecuter;
-import org.acme.bestpublishing.model.BestPubContentModel;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

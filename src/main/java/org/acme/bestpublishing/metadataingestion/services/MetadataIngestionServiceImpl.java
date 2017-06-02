@@ -18,9 +18,6 @@ package org.acme.bestpublishing.metadataingestion.services;
 
 import org.acme.bestpublishing.error.ProcessingErrorCode;
 import org.acme.bestpublishing.exceptions.IngestionException;
-import org.acme.bestpublishing.model.BestPubContentModel;
-import org.acme.bestpublishing.model.BestPubMetadataFileModel;
-import org.acme.bestpublishing.model.BestPubWorkflowModel;
 import org.acme.bestpublishing.services.AlfrescoRepoUtilsService;
 import org.acme.bestpublishing.services.AlfrescoWorkflowUtilsService;
 import org.acme.bestpublishing.services.BestPubUtilsService;
@@ -250,17 +247,16 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         // Setup workflow properties
         Map<QName, Serializable> props = new HashMap<>();
         props.put(WorkflowModel.PROP_WORKFLOW_DESCRIPTION, "Best Publishing workflow for " + isbn);
-        // Process variable for the related ISBN
-        props.put(PROP_RELATED_ISBN, isbn);
         // Process variable that contains all metadata ingested
         props.put(PROP_ALL_METADATA, allMetadata);
         // Process variables for the first T1 Validation User Task form
         Properties bookInfo = allMetadata.get(isbn);
-        props.put(BookInfoAspect.Prop.BOOK_TITLE, (String)bookInfo.get(BOOK_METADATA_TITLE_PROP_NAME));
-        props.put(BookInfoAspect.Prop.BOOK_GENRE_NAME, (String)bookInfo.get(BOOK_METADATA_GENRE_PROP_NAME));
-        props.put(BookInfoAspect.Prop.BOOK_AUTHORS_NAME, (String)bookInfo.get(BOOK_METADATA_AUTHORS_PROP_NAME));
-        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_CHAPTERS, (String)bookInfo.get(BOOK_METADATA_NR_OF_CHAPTERS_PROP_NAME));
-        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_PAGES, (String)bookInfo.get(BOOK_METADATA_NR_OF_PAGES_PROP_NAME));
+        props.put(BookInfoAspect.Prop.ISBN, isbn);
+        props.put(BookInfoAspect.Prop.BOOK_TITLE, bookInfo.getProperty(BOOK_METADATA_TITLE_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_GENRE_NAME, bookInfo.getProperty(BOOK_METADATA_GENRE_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_AUTHORS_NAME, bookInfo.getProperty(BOOK_METADATA_AUTHORS_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_CHAPTERS, bookInfo.getProperty(BOOK_METADATA_NR_OF_CHAPTERS_PROP_NAME));
+        props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_PAGES, bookInfo.getProperty(BOOK_METADATA_NR_OF_PAGES_PROP_NAME));
         props.put(PROP_PUBLISHING_DATE, today);
         // Process variables that control the flow
         props.put(PROP_CONTENT_FOUND, false);
