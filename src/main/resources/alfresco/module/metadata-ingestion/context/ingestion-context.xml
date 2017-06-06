@@ -10,7 +10,7 @@
     <bean id="org.acme.bestpublishing.metadataingestion.action.metadataIngestionExecuter"
           class="org.acme.bestpublishing.metadataingestion.action.MetadataIngestionExecuter">
         <property name="filesystemPathToCheck" value="${bestpub.ingestion.metadata.filesystemPathToCheck}"/>
-        <property name="alfrescofolderpath" value="${bestpub.ingestion.metadata.alfrescoFolderPath}"/>
+        <property name="alfrescoFolderPath" value="${bestpub.ingestion.metadata.alfrescoFolderPath}"/>
         <property name="cronExpression" value="${bestpub.ingestion.metadata.cronExpression}"/>
         <property name="cronStartDelay" value="${bestpub.ingestion.metadata.cronStartDelay}"/>
 
