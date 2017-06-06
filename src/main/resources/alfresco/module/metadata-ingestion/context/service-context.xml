@@ -30,7 +30,6 @@
             <bean class="org.acme.bestpublishing.metadataingestion.services.MetadataIngestionServiceImpl">
                 <property name="interruptT1TimerDuration" value="${bestpub.workflow.interruptT1TimerDuration}"/>
                 <property name="wait2Check4ContentTimerDuration" value="${bestpub.workflow.wait2Check4ContentTimerDuration}"/>
-                <property name="serviceRegistry" ref="ServiceRegistry"/>
                 <property name="alfrescoRepoUtilsService"
                           ref="org.acme.bestpublishing.services.alfrescoRepoUtilsService" />
                 <property name="alfrescoWorkflowUtilsService"

@@ -23,20 +23,16 @@ import org.acme.bestpublishing.services.AlfrescoWorkflowUtilsService;
 import org.acme.bestpublishing.services.BestPubUtilsService;
 import org.acme.bestpublishing.services.IngestionService;
 import org.alfresco.repo.workflow.WorkflowModel;
-import org.alfresco.service.ServiceRegistry;
 import org.alfresco.service.cmr.repository.*;
 import org.alfresco.service.cmr.workflow.WorkflowInstance;
 import org.alfresco.service.namespace.QName;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -55,24 +51,12 @@ import static org.acme.bestpublishing.model.BestPubMetadataFileModel.*;
 public class MetadataIngestionServiceImpl implements IngestionService {
     private static final Logger LOG = LoggerFactory.getLogger(MetadataIngestionServiceImpl.class);
 
-    private final DateFormat publishingDateFormat = new SimpleDateFormat("dd/MM/YYYY");
-
-    private static final String PROCESSING_STATUS_NEW = "new";
-    private static final String PROCESSING_STATUS_SUCCESSFUL = "success";
-    private static final String PROCESSING_STATUS_ALREADY_PROCESSED = "alreadyProcessed";
-    private static final String BOOK_TITLE_UNKNOWN = "Unkown";
-
     /**
      * Best Publishing util Services
      */
     private AlfrescoRepoUtilsService alfrescoRepoUtilsService;
     private AlfrescoWorkflowUtilsService alfrescoWorkflowUtilsService;
     private BestPubUtilsService bestPubUtilsService;
-
-    /**
-     * Alfresco services
-     */
-    private ServiceRegistry serviceRegistry;
 
     /**
      * Workflow timers, values passed in from alfresco-global.properties settings
@@ -84,9 +68,6 @@ public class MetadataIngestionServiceImpl implements IngestionService {
      * Spring DI
      */
 
-    public void setServiceRegistry(ServiceRegistry serviceRegistry) {
-        this.serviceRegistry = serviceRegistry;
-    }
     public void setAlfrescoRepoUtilsService(AlfrescoRepoUtilsService alfrescoRepoUtilsService) {
         this.alfrescoRepoUtilsService = alfrescoRepoUtilsService;
     }
@@ -115,8 +96,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         String zipFilename = zipFile.getName().trim();
 
         // Verify that metadata ZIP is new and has not already been processed (is being processed)
-        String processingStatus = getZipProcessingStatus(isbn, zipFilename, alfrescoFolderNodeRef);
-        if (StringUtils.equals(processingStatus, PROCESSING_STATUS_NEW)) {
+        if (isNewIsbn(isbn, zipFilename, alfrescoFolderNodeRef)) {
             alfrescoRepoUtilsService.createFile(alfrescoFolderNodeRef, zipFile);
             LOG.debug("Metadata ZIP file [{}] uploaded to Alfresco", zipFilename);
 
@@ -196,15 +176,15 @@ public class MetadataIngestionServiceImpl implements IngestionService {
      * Check if the metadata ZIP has already been ingested into Alfresco.
      * A metadata ZIP contains metadata for all chapters so no need to ingest more than once.
      *
-     * @return "new" or already processed error message
+     * @return "true" is this is metadata ZIP with new ISBN not previously processed
      */
-    private String getZipProcessingStatus(String isbn, String zipFilename, NodeRef incomingMetadataFolderNodeRef) {
+    private boolean isNewIsbn(String isbn, String zipFilename, NodeRef incomingMetadataFolderNodeRef) {
         // First check if we got a ZIP in the /Data Dictionary/BestPub/Incoming/Metadata folder
         NodeRef zipFileNodeRef = alfrescoRepoUtilsService.getChildByName(incomingMetadataFolderNodeRef, zipFilename);
         if (zipFileNodeRef != null) {
             LOG.error("Metadata [{}] has already been uploaded to Alfresco, " +
                     "cannot process it again [nodeRef={}]", zipFilename, zipFileNodeRef);
-            return PROCESSING_STATUS_ALREADY_PROCESSED;
+            return false;
         }
 
         // Then check if it has already been processed and workflow instance exists,
@@ -214,22 +194,19 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         if (workflowInstance != null) {
             LOG.error("Metadata [{}] has already been processed, cannot process it again [workflowId={}]",
                     zipFilename, workflowInstance.getId());
-            return PROCESSING_STATUS_ALREADY_PROCESSED;
+            return false;
         }
 
-        // Finally check if ISBN folder exists under /BestPub/Published, workflow completed for ISBN and maybe removed,
-        // so first 2 checks would not catch this
-        /**
-        NodeRef rhoFolderNodeRef = alfrescoRepoUtilsService.getNodeByDisplayPath(RHO_FOLDER_NAME);
-        NodeRef isbnFolderNodeRef = alfrescoRepoUtilsService.getChildByName(rhoFolderNodeRef, isbn);
+        // Finally check if ISBN folder exists under Sites/book-management/documentLibrary/{year}/{isbn},
+        // workflow completed for ISBN and maybe removed, so first 2 checks would not catch this
+        NodeRef isbnFolderNodeRef = bestPubUtilsService.getBaseFolderForIsbn(isbn);
         if (isbnFolderNodeRef != null) {
             LOG.error("Metadata [{}] has already been processed successfully, cannot process it again",
                     zipFilename);
-            return PROCESSING_STATUS_ALREADY_PROCESSED;
+            return false;
         }
-         */
 
-        return PROCESSING_STATUS_NEW;
+        return true;
     }
 
     /**
@@ -258,7 +235,7 @@ public class MetadataIngestionServiceImpl implements IngestionService {
         props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_CHAPTERS, bookInfo.getProperty(BOOK_METADATA_NR_OF_CHAPTERS_PROP_NAME));
         props.put(BookInfoAspect.Prop.BOOK_NUMBER_OF_PAGES, bookInfo.getProperty(BOOK_METADATA_NR_OF_PAGES_PROP_NAME));
         props.put(PROP_PUBLISHING_DATE, today);
-        // Process variables that control the flow
+        // Initialize process variables that control the flow
         props.put(PROP_CONTENT_FOUND, false);
         props.put(PROP_CONTENT_ERROR_FOUND, false);
         props.put(PROP_METADATA_CHAPTER_MATCHING_OK, false);
