@@ -34,6 +34,7 @@
                           ref="org.acme.bestpublishing.services.alfrescoRepoUtilsService" />
                 <property name="alfrescoWorkflowUtilsService"
                           ref="org.acme.bestpublishing.services.alfrescoWorkflowUtilsService"/>
+                <property name="bestPubUtilsService" ref="org.acme.bestpublishing.services.bestPubUtilsService"/>
             </bean>
         </property>
         <property name="transactionAttributeSource">
