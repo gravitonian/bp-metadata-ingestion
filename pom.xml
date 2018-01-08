@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>metadata-ingestion</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
 
     <!-- UPDATED -->
     <name>BestPub Metadata Ingestion Platform Jar Module</name>
@@ -25,7 +25,7 @@
         <connection>scm:git:https://github.com/gravitonian/bp-metadata-ingestion.git</connection>
         <url>https://github.com/gravitonian/bp-metadata-ingestion</url>
         <developerConnection>scm:git:https://github.com/gravitonian/bp-metadata-ingestion.git</developerConnection>
-      <tag>v1.0</tag>
+      <tag>HEAD</tag>
   </scm>
 
     <!-- This will import the dependencyManagement for all artifacts in the selected Alfresco platform.
