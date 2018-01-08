@@ -27,10 +27,10 @@ import org.quartz.StatefulJob;
 
 /**
  * Run the Metadata Ingestion Job
- * <p/>
+ *
  * Extends the AbstractScheduledLockedJob class that has job lock service functionality to lock job so
  * it can run safely in a cluster.
- * <p/>
+ *
  * Important: implement StatefulJob so the job is not triggered concurrently by the scheduler
  *
  * @author martin.bergljung@marversolutions.org

@@ -15,12 +15,18 @@
     <parent>
         <groupId>org.acme.bestpublishing</groupId>
         <artifactId>best-publishing-parent</artifactId>
-        <version>1.0-SNAPSHOT</version>
+        <version>1.2</version>
     </parent>
 
     <properties>
 
     </properties>
+
+    <scm>
+        <connection>scm:git:https://github.com/gravitonian/bp-metadata-ingestion.git</connection>
+        <url>https://github.com/gravitonian/bp-metadata-ingestion</url>
+        <developerConnection>scm:git:https://github.com/gravitonian/bp-metadata-ingestion.git</developerConnection>
+    </scm>
 
     <!-- This will import the dependencyManagement for all artifacts in the selected Alfresco platform.
             NOTE: You still need to define dependencies in your POM,
@@ -160,5 +166,10 @@
         </testResources>
 
     </build>
-
+    <repositories>
+        <repository>
+            <id>local-releases</id>
+            <url>http://localhost:8081/repository/maven-releases/</url>
+        </repository>
+    </repositories>
 </project>
